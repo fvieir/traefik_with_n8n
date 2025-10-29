@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: "traefik:v3.4"
+    image: "traefik:v3.1"
     container_name: "traefik"
     restart: unless-stopped
     security_opt:
@@ -8,36 +8,32 @@ services:
     networks:
       - proxy
     command:
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
+      - "--api.dashboard=true" 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=proxy"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
-      - "--entryPoints.websecure.http.tls=true"
       - "--entryPoints.web.http.redirections.entryPoint.to=websecure"
       - "--entryPoints.web.http.redirections.entryPoint.scheme=https"
       - "--certificatesresolvers.le.acme.email=fcvieira2@gmail.com"
       - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--entrypoints.websecure.http.middlewares.auth.basicauth.users=admin:$$apr1$$eUXY/vzb$$zA4Ye41y4.IMo2fJt1Mg/."
     ports:
       - "80:80"
-      - "443:443"
-      - "8080:8080"
+      - "443:443" 
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      # Add the following volumes
-      - "./certs:/certs:ro"
-      - "./dynamic:/etc/traefik/dynamic:ro"
       - "./letsencrypt:/letsencrypt"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`dashboard.autoslack.shop`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
-      # Add the following label
       - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=le"
+      - "traefik.http.routers.dashboard.middlewares=auth@internal"
 
 networks:
   proxy:
