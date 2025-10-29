@@ -1,0 +1,114 @@
+services:
+  n8n-editor:
+    image: 'n8nio/n8n:1.108.1'
+    container_name: n8n-editor
+    restart: always
+    networks:
+      - n8n
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n-editor.rule=Host(`n8n.autoslack.shop`)"
+      - "traefik.http.routers.n8n-editor.entrypoints=websecure"
+      - "traefik.http.routers.n8n-editor.tls=true"
+      - "traefik.http.routers.n8n-editor.tls.certresolver=le"
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.sslRedirect=true"
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.n8n-editor.service=n8n-editor"
+      - "traefik.http.services.n8n-editor.loadbalancer.server.port=5678"
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+
+  n8n-workers:
+    image: 'n8nio/n8n:1.108.1'
+    container_name: n8n-workers
+    restart: always
+    networks:
+      - n8n
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    labels:
+      - "traefik.enable=false"
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    command: ["worker", "--concurrency=10"]
+    
+  n8n-webhooks:
+    image: 'n8nio/n8n:1.108.1'
+    container_name: n8n-webhooks
+    restart: always
+    networks:
+      - n8n
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n-webhook.rule=Host(`n8n-webhook.autoslack.shop`)"
+      - "traefik.http.routers.n8n-webhook.entrypoints=websecure"
+      - "traefik.http.routers.n8n-webhook.tls=true"
+      - "traefik.http.routers.n8n-webhook.tls.certresolver=le"
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.sslRedirect=true"
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.n8n-webhook.service=n8n-webhook"
+      - "traefik.http.services.n8n-webhook.loadbalancer.server.port=5678"
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    command: webhook
+
+  postgres-n8n:
+    image: ankane/pgvector
+    container_name: postgres-n8n
+    restart: always
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=n8n
+    networks:
+      - n8n
+  
+  redis-n8n:
+    image: redis:alpine
+    container_name: redis-n8n
+    restart: always
+    ports:
+      - 6379:6379
+    networks:
+      - n8n
+    volumes:
+      - ./redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+networks:
+  n8n:
+    driver: bridge
+  proxy:
+    external: true
