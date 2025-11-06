@@ -1,0 +1,65 @@
+version: '3.3'
+
+services:
+  api_evo:
+    container_name: evolution_api
+    image: atendai/evolution-api:v2.1.1
+    restart: always
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - proxy
+      - evolution-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.api_evo.rule=Host(`evo.autoslack.shop`)"
+      - "traefik.http.routers.api_evo.entrypoints=websecure"
+      - "traefik.http.routers.api_evo.tls=true"
+      - "traefik.http.routers.api_evo.tls.certresolver=le"
+      - "traefik.http.routers.api_evo.service=api_evo"
+      - "traefik.http.services.api_evo.loadbalancer.server.port=8080"
+      - "traefik.http.routers.api_evo.middlewares=secure-headers@docker"
+      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.secure-headers.headers.sslRedirect=true"
+      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000" 
+    env_file:
+      - .env
+
+  postgres_evo:
+    image: postgres:13
+    restart: always
+    labels:
+      - "traefik.enable=false"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: $Alm&78*#@Gf197KZcv
+      POSTGRES_DB: evolution_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - evolution-net
+      - default
+
+  redis_evo:
+    image: redis:alpine
+    restart: always
+    labels:
+      - "traefik.enable=false"
+    ports:
+      - "6380:6379"
+    networks:
+      - evolution-net
+      - default
+
+volumes:
+  evolution_instances:
+  pg_data:
+
+networks:
+  evolution-net:
+    driver: bridge
