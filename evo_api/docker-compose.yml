@@ -37,7 +37,7 @@ services:
       - "traefik.enable=false"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: '$Alm&78*#@Gf197KZcv'
+      POSTGRES_PASSWORD: '&78*#@Gf197KZcv'
       POSTGRES_DB: evolution_db
     volumes:
       - pg_data:/var/lib/postgresql/data
