@@ -1,5 +1,3 @@
-version: '3.3'
-
 services:
   api_evo:
     container_name: evolution_api
@@ -11,50 +9,61 @@ services:
       - proxy
       - evolution-net
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=proxy"
-      - "traefik.http.routers.api_evo.rule=Host(`evo.autoslack.shop`)"
-      - "traefik.http.routers.api_evo.entrypoints=websecure"
-      - "traefik.http.routers.api_evo.tls=true"
-      - "traefik.http.routers.api_evo.tls.certresolver=le"
-      - "traefik.http.routers.api_evo.service=api_evo"
-      - "traefik.http.services.api_evo.loadbalancer.server.port=8080"
-      - "traefik.http.routers.api_evo.middlewares=secure-headers@docker"
-      - "traefik.http.middlewares.secure-headers.headers.frameDeny=true"
-      - "traefik.http.middlewares.secure-headers.headers.sslRedirect=true"
-      - "traefik.http.middlewares.secure-headers.headers.browserXssFilter=true"
-      - "traefik.http.middlewares.secure-headers.headers.contentTypeNosniff=true"
-      - "traefik.http.middlewares.secure-headers.headers.stsIncludeSubdomains=true"
-      - "traefik.http.middlewares.secure-headers.headers.stsPreload=true"
-      - "traefik.http.middlewares.secure-headers.headers.stsSeconds=31536000" 
+      - traefik.enable=true
+      - traefik.http.routers.api_evo_insecure.rule=Host(`evo.SEU_DOMINIO`)
+      - traefik.http.routers.api_evo_insecure.entrypoints=web
+      - traefik.http.routers.api_evo_insecure.middlewares=redirect-to-https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.routers.api_evo.rule=Host(`evo.SEU_DOMINIO`)
+      - traefik.http.routers.api_evo.entrypoints=websecure
+      - traefik.http.routers.api_evo.tls=true
+      - traefik.http.routers.api_evo.tls.certresolver=le
+      - traefik.http.services.api_evo.loadbalancer.server.port=8080
     env_file:
       - .env
+    depends_on:
+      postgres_evo:
+        condition: service_healthy
+      redis_evo:
+        condition: service_healthy
 
   postgres_evo:
     image: postgres:13
     restart: always
-    labels:
-      - "traefik.enable=false"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 'Gf19Zcv78XyL*@92'
+      POSTGRES_PASSWORD: 'SUASENHA'
       POSTGRES_DB: evolution_db
     volumes:
       - pg_data:/var/lib/postgresql/data
     networks:
       - evolution-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis_evo:
     image: redis:alpine
     restart: always
-    labels:
-      - "traefik.enable=false"
     networks:
       - evolution-net
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   evolution_instances:
+    driver: local
   pg_data:
+    driver: local
+  redis_data:
+    driver: local
 
 networks:
   proxy:
